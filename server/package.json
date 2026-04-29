@@ -4,6 +4,9 @@
   "description": "Authentication server with Twilio SMS/VoIP for Metro Booking Service",
   "main": "src/app.js",
   "type": "commonjs",
+  "engines": {
+    "node": ">=16.x"
+  },
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
