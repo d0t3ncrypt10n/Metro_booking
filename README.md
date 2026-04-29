@@ -50,8 +50,8 @@ A modern, feature-rich metro booking and network management system built with Re
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/Abhigoyal213/Metro_Go.git
-cd Metro_Go
+git clone https://github.com/d0t3ncrypt10n/Metro_booking.git
+cd Metro_booking
 ```
 
 2. Install dependencies:
@@ -107,18 +107,52 @@ metro-booking-service/
 
 ## Authentication
 
-### Regular Users
-- Login required only for booking confirmation
-- OTP-based authentication (demo mode)
-- Session persists in localStorage
+### Twilio SMS/Voice Authentication
+The application now uses **Twilio** for secure phone-based authentication:
+
+- **SMS OTP**: Receive verification codes via text message
+- **Voice OTP**: Get codes via automated phone call
+- **JWT Tokens**: Secure session management with 7-day expiry
+- **Rate Limiting**: Protection against abuse (3 OTP requests/minute)
+- **Secure OTP Storage**: Cryptographically hashed with SHA-256
+- **Auto-Expiry**: OTPs expire after 5 minutes
+
+### Setup Instructions
+
+1. **Install Backend Dependencies**:
+```bash
+cd server
+npm install
+```
+
+2. **Configure Environment**:
+The Twilio credentials are already set up in `server/.env`. For production, update the `JWT_SECRET`.
+
+3. **Start Backend Server**:
+```bash
+cd server
+npm run dev
+```
+
+4. **Start Frontend** (in a new terminal):
+```bash
+npm run dev
+```
+
+5. **Test Authentication**:
+- Navigate to the login page
+- Enter your name and phone number (with country code, e.g., +919876543210)
+- Choose SMS or Voice delivery
+- Enter the 6-digit OTP received
+- You'll be logged in for 7 days
+
+📖 **Detailed Setup Guide**: See [TWILIO_SETUP.md](./TWILIO_SETUP.md) for complete instructions.
 
 ### Admin Access
 - Restricted to specific credentials:
-  - **Name**: Abhishek
-  - **Phone**: 8107235363
+  - **Name**: Jayant
+  - **Phone**: +919472747641
 - Full network management capabilities
-
-**Note**: In demo mode, OTP is displayed in console and alert. For production, integrate with SMS gateway (Twilio, AWS SNS, etc.).
 
 ## Network Configuration
 
@@ -205,6 +239,6 @@ This project is licensed under the MIT License.
 
 ## Contact
 
-Abhishek Goyal - [@Abhigoyal213](https://github.com/Abhigoyal213)
+Jayant - Admin & Maintainer
 
-Project Link: [https://github.com/Abhigoyal213/Metro_Go](https://github.com/Abhigoyal213/Metro_Go)
+Project Link: [https://github.com/d0t3ncrypt10n/Metro_booking](https://github.com/d0t3ncrypt10n/Metro_booking)

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBookingStore } from '../store/bookingStore';
+import { useAuth } from '../hooks/useAuth';
+import { sendOTP, verifyOTP } from '../services/authService';
 import Button from '../components/atoms/Button';
 import Input from '../components/atoms/Input';
 import Icon from '../components/atoms/Icon';
@@ -11,11 +13,13 @@ export default function Login() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [otpMethod, setOtpMethod] = useState<'sms' | 'voice'>('sms');
+  const [otpExpiresIn, setOtpExpiresIn] = useState<number>(300);
   const navigate = useNavigate();
   const { source, destination, route } = useBookingStore();
+  const { login } = useAuth();
 
   useEffect(() => {
     // Check if user is already logged in
@@ -30,12 +34,31 @@ export default function Login() {
     }
   }, [navigate, source, destination, route]);
 
-  const generateOtp = () => {
-    // Generate a 6-digit OTP
-    return Math.floor(100000 + Math.random() * 900000).toString();
+  // Format phone number to E.164 format
+  const formatPhoneE164 = (phoneNumber: string): string => {
+    // Remove all non-digits
+    const digits = phoneNumber.replace(/\D/g, '');
+    
+    // If starts with country code, use as is
+    if (digits.startsWith('91') && digits.length === 12) {
+      return `+${digits}`;
+    }
+    
+    // If 10 digits, assume India (+91)
+    if (digits.length === 10) {
+      return `+91${digits}`;
+    }
+    
+    // If starts with 1 and has 11 digits, assume US/Canada
+    if (digits.startsWith('1') && digits.length === 11) {
+      return `+${digits}`;
+    }
+    
+    // Default: add + if not present
+    return digits.startsWith('+') ? digits : `+${digits}`;
   };
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -51,21 +74,29 @@ export default function Login() {
 
     setLoading(true);
 
-    // Simulate OTP sending delay
-    setTimeout(() => {
-      const otp = generateOtp();
-      setGeneratedOtp(otp);
+    try {
+      const formattedPhone = formatPhoneE164(phone);
+      const response = await sendOTP({
+        phone: formattedPhone,
+        name: name.trim(),
+        method: otpMethod,
+      });
+
+      setOtpExpiresIn(response.expiresIn);
       setStep('otp');
-      setLoading(false);
+      setError('');
       
-      // In a real app, this would be sent via SMS
-      // For demo purposes, show it in console
-      console.log('🔐 Your OTP is:', otp);
-      alert(`Demo Mode: Your OTP is ${otp}\n(In production, this would be sent via SMS)`);
-    }, 1000);
+      // Show success message
+      console.log(`✅ OTP sent via ${otpMethod} to ${formattedPhone}`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send OTP. Please try again.');
+      console.error('Send OTP error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -74,23 +105,25 @@ export default function Login() {
       return;
     }
 
-    if (otp !== generatedOtp) {
-      setError('Invalid OTP. Please try again.');
+    if (otp.length !== 6) {
+      setError('OTP must be 6 digits');
       return;
     }
 
     setLoading(true);
 
-    // Simulate verification delay
-    setTimeout(() => {
-      // Store user data in localStorage
-      const userData = {
+    try {
+      const formattedPhone = formatPhoneE164(phone);
+      const response = await verifyOTP({
+        phone: formattedPhone,
+        otp: otp.trim(),
         name: name.trim(),
-        phone: phone.trim(),
-        loginTime: new Date().toISOString()
-      };
-      localStorage.setItem('metroUser', JSON.stringify(userData));
-      setLoading(false);
+      });
+
+      // Store user data and token using the login function from useAuth
+      login(response.user, response.token);
+      
+      console.log('✅ Login successful:', response.user);
       
       // If there's booking data, go to confirmation, otherwise go home
       if (source && destination && route) {
@@ -98,16 +131,38 @@ export default function Login() {
       } else {
         navigate('/');
       }
-    }, 500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify OTP. Please try again.');
+      console.error('Verify OTP error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResendOtp = () => {
-    const otp = generateOtp();
-    setGeneratedOtp(otp);
+  const handleResendOtp = async () => {
     setOtp('');
     setError('');
-    console.log('🔐 Your new OTP is:', otp);
-    alert(`Demo Mode: Your new OTP is ${otp}\n(In production, this would be sent via SMS)`);
+    setLoading(true);
+
+    try {
+      const formattedPhone = formatPhoneE164(phone);
+      const response = await sendOTP({
+        phone: formattedPhone,
+        name: name.trim(),
+        method: otpMethod,
+      });
+
+      setOtpExpiresIn(response.expiresIn);
+      console.log(`✅ OTP resent via ${otpMethod} to ${formattedPhone}`);
+      
+      // Show success feedback
+      alert(`OTP has been resent via ${otpMethod.toUpperCase()}`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend OTP. Please try again.');
+      console.error('Resend OTP error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -165,13 +220,49 @@ export default function Login() {
                   </span>
                   <Input
                     type="tel"
-                    placeholder="Enter your phone number"
+                    placeholder="+91 9876543210"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => setPhone(e.target.value)}
                     className="pl-12"
-                    maxLength={10}
                     disabled={loading}
                   />
+                </div>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Enter with country code (e.g., +91 for India)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Delivery Method
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setOtpMethod('sms')}
+                    className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                      otpMethod === 'sms'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-primary/50'
+                    }`}
+                    disabled={loading}
+                  >
+                    <Icon name="message" className="text-xl mb-1" />
+                    <div className="text-sm font-medium">SMS</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOtpMethod('voice')}
+                    className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                      otpMethod === 'voice'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-primary/50'
+                    }`}
+                    disabled={loading}
+                  >
+                    <Icon name="phone_in_talk" className="text-xl mb-1" />
+                    <div className="text-sm font-medium">Voice Call</div>
+                  </button>
                 </div>
               </div>
 
@@ -284,8 +375,8 @@ export default function Login() {
         </Card>
 
         <div className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
-          <p>Demo Mode: OTP will be displayed in console and alert</p>
-          <p className="mt-1">In production, OTP would be sent via SMS</p>
+          <p>🔐 Secured with Twilio SMS/Voice Authentication</p>
+          <p className="mt-1">OTP expires in {Math.floor(otpExpiresIn / 60)} minutes</p>
         </div>
       </div>
     </div>

@@ -4,8 +4,8 @@ import Icon from '../atoms/Icon';
 import ThemeToggle from '../atoms/ThemeToggle';
 import { useAuth } from '../../hooks/useAuth';
 
-const ADMIN_PHONE = '8107235363';
-const ADMIN_NAME = 'Abhishek';
+const ADMIN_PHONE = '+919472747641';
+const ADMIN_NAME = 'Jayant';
 
 export default function Header() {
   const { user, logout } = useAuth();

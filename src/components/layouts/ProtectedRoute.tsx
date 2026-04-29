@@ -7,8 +7,8 @@ interface ProtectedRouteProps {
   requireAdmin?: boolean;
 }
 
-const ADMIN_PHONE = '8107235363';
-const ADMIN_NAME = 'Abhishek';
+const ADMIN_PHONE = '+919472747641';
+const ADMIN_NAME = 'Jayant';
 
 export default function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { user, isAuthenticated, loading } = useAuth();
