@@ -156,7 +156,6 @@ pipeline {
                 sh """
                     kubectl apply -f k8s/namespace.yml
                     kubectl apply -f k8s/backend-configmap.yml
-                    kubectl apply -f k8s/backend-secret.yml
                     kubectl apply -f k8s/mongodb-deployment.yml
                     kubectl apply -f k8s/mongodb-service.yml
                     kubectl apply -f k8s/backend-deployment.yml
