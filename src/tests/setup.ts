@@ -13,3 +13,17 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: vi.fn(),
   })),
 });
+
+// Mock fetch for API calls like loading the network JSON
+global.fetch = vi.fn().mockImplementation((url) => {
+  if (url === '/mini-metro-network.json') {
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ lines: [], stations: [] }),
+    });
+  }
+  return Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({}),
+  });
+}) as any;
