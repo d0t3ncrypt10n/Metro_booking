@@ -23,8 +23,7 @@ pipeline {
         S3_BUCKET          = credentials('metrogo-s3-bucket')
         CLOUDFRONT_ID      = credentials('metrogo-cloudfront-id')
 
-        // Node.js
-        NODE_ENV           = 'production'
+        // Node.js variables can be set per stage if needed
     }
 
     tools {
