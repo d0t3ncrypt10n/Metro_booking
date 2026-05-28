@@ -1,0 +1,246 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "🚀 API Request Rate",
+      "description": "Total HTTP requests per second",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisLabel": "req/s",
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[5m])) by (method)",
+          "legendFormat": "{{method}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "⏱️ API Response Latency (p95)",
+      "description": "95th percentile API response time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisLabel": "seconds",
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "scheme",
+            "lineWidth": 2
+          },
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route))",
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "📱 OTP Request Rate",
+      "description": "OTP send and verify attempts per minute",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "gradientMode": "scheme",
+            "lineWidth": 1,
+            "barAlignment": 0,
+            "barWidthFactor": 0.6
+          },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(otp_requests_total[5m])) by (type, status)",
+          "legendFormat": "{{type}} — {{status}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "🔐 Active JWT Sessions",
+      "description": "Current number of active authenticated sessions",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "targets": [
+        {
+          "expr": "active_sessions_total",
+          "legendFormat": "Sessions",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "📊 HTTP Status Distribution",
+      "description": "Breakdown of response status codes",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "pieType": "donut",
+        "legend": { "displayMode": "table", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(http_requests_total[1h])) by (status_code)",
+          "legendFormat": "{{status_code}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "🖥️ Node.js Memory Usage",
+      "description": "Backend process memory consumption",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "scheme",
+            "lineWidth": 2
+          },
+          "unit": "bytes"
+        }
+      },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=\"metrogo-backend\"}",
+          "legendFormat": "RSS Memory",
+          "refId": "A"
+        },
+        {
+          "expr": "nodejs_heap_size_used_bytes{job=\"metrogo-backend\"}",
+          "legendFormat": "Heap Used",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "title": "⚡ Event Loop Lag",
+      "description": "Node.js event loop lag — high values indicate backend saturation",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineWidth": 2
+          },
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(nodejs_eventloop_lag_seconds{job=\"metrogo-backend\"}[5m])",
+          "legendFormat": "Event Loop Lag",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["metrogo", "metro-booking", "nodejs", "express"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+        "hide": 0,
+        "includeAll": false,
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "MetroGo — Backend API Dashboard",
+  "uid": "metrogo-backend-dashboard",
+  "version": 1
+}

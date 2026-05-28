@@ -9,15 +9,39 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://metro-booking-service.vercel.app',
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, health checks)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+      return callback(null, true);
+    }
+    // In production, also allow any vercel.app subdomain
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    callback(null, false);
+  },
   credentials: true
 }));
 app.use(express.json());
 
-// Health check
+// Health check (matches K8s liveness/readiness probes at /health)
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), message: 'Metro Booking API is running' });
+});
+
+// Also keep /api/health for backward compatibility
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Metro Booking API is running' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), message: 'Metro Booking API is running' });
 });
 
 // Routes

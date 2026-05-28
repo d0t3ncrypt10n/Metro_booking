@@ -1,0 +1,25 @@
+# ============================================
+# Prometheus Configuration — MetroGo
+# ============================================
+
+global:
+  scrape_interval: 15s        # Scrape targets every 15 seconds
+  evaluation_interval: 15s    # Evaluate rules every 15 seconds
+  scrape_timeout: 10s         # Timeout for scrape requests
+
+# ─── Scrape Configurations ─────────────────
+scrape_configs:
+  # MetroGo Backend API metrics
+  - job_name: "metrogo-backend"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:3000"]
+        labels:
+          app: "metrogo"
+          service: "backend-api"
+          environment: "development"
+
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

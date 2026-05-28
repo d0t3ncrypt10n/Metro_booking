@@ -35,7 +35,7 @@ export interface AuthError {
  * Send OTP to phone number via SMS or Voice
  */
 export async function sendOTP(data: SendOTPRequest): Promise<SendOTPResponse> {
-  const response = await fetch(`${API_URL}/auth/send-otp`, {
+  const response = await fetch(`${API_URL}/api/auth/send-otp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -56,7 +56,7 @@ export async function sendOTP(data: SendOTPRequest): Promise<SendOTPResponse> {
  * Verify OTP and receive JWT token
  */
 export async function verifyOTP(data: VerifyOTPRequest): Promise<VerifyOTPResponse> {
-  const response = await fetch(`${API_URL}/auth/verify-otp`, {
+  const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -77,7 +77,7 @@ export async function verifyOTP(data: VerifyOTPRequest): Promise<VerifyOTPRespon
  * Refresh JWT token
  */
 export async function refreshToken(token: string): Promise<{ token: string }> {
-  const response = await fetch(`${API_URL}/auth/refresh-token`, {
+  const response = await fetch(`${API_URL}/api/auth/refresh-token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

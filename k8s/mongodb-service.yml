@@ -1,0 +1,22 @@
+# ============================================
+# Service — MongoDB (ClusterIP — Internal Only)
+# ============================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  namespace: metrogo
+  labels:
+    app: metrogo
+    component: mongodb
+spec:
+  type: ClusterIP
+  selector:
+    app: metrogo
+    component: mongodb
+  ports:
+    - name: mongodb
+      protocol: TCP
+      port: 27017
+      targetPort: 27017

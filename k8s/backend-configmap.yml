@@ -1,0 +1,18 @@
+# ============================================
+# ConfigMap — MetroGo Backend (Non-Sensitive)
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: metrogo
+  labels:
+    app: metrogo
+    component: backend
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  OTP_EXPIRY_SECONDS: "300"
+  CLIENT_URL: "https://metro-booking-service.vercel.app"
+  FRONTEND_URL: "https://metro-booking-service.vercel.app"

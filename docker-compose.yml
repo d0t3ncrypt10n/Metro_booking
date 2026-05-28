@@ -1,0 +1,115 @@
+# ============================================
+# MetroGo — Docker Compose (Local Development)
+# ============================================
+# Usage:
+#   docker compose up -d          Start all services
+#   docker compose down           Stop all services
+#   docker compose logs -f        Follow logs
+#   docker compose ps             Check status
+
+version: "3.9"
+
+services:
+  # ─── MongoDB ───────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: metrogo-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: metrogo
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - metrogo-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend API ───────────────────────────
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: metrogo-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongo:27017/metrogo
+      - JWT_SECRET=${JWT_SECRET:-metro_booking_jwt_secret_key_2026}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-your_twilio_sid}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-your_twilio_token}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-+1234567890}
+      - OTP_EXPIRY_SECONDS=300
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - metrogo-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ─── Prometheus ────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: metrogo-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - metrogo-network
+
+  # ─── Grafana ───────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: metrogo-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=metrogo2026
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - metrogo-network
+
+# ─── Volumes ───────────────────────────────
+volumes:
+  mongo_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# ─── Networks ──────────────────────────────
+networks:
+  metrogo-network:
+    driver: bridge
