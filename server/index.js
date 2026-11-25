@@ -14,7 +14,6 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://metro-booking-service.vercel.app',
 ].filter(Boolean);
 
 app.use(cors({
@@ -22,10 +21,6 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, health checks)
     if (!origin) return callback(null, true);
     if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
-      return callback(null, true);
-    }
-    // In production, also allow any vercel.app subdomain
-    if (origin.endsWith('.vercel.app')) {
       return callback(null, true);
     }
     callback(null, false);

@@ -28,7 +28,8 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         EKS_CLUSTER_NAME = 'metrogo-eks'
         S3_BUCKET = credentials('metrogo-s3-bucket')
-        CLOUDFRONT_ID = credentials('metrogo-cloudfront-id')
+        // CloudFront ID — optional (account may not have CloudFront access)
+        CLOUDFRONT_ID = ''
         SONARQUBE_URL = 'http://localhost:9000'
         SONARQUBE_TOKEN = credentials('sonar-token')
         IMAGE_TAG = "${env.BUILD_NUMBER}"
@@ -152,6 +153,14 @@ pipeline {
                 echo '🌐 Stage 10: Deploying frontend static files to AWS S3...'
                 sh "aws s3 sync dist/ s3://${S3_BUCKET}/ --delete --cache-control 'public, max-age=31536000, immutable' --exclude 'index.html' || echo 'S3 sync skipped'"
                 sh "aws s3 cp dist/index.html s3://${S3_BUCKET}/index.html --cache-control 'public, max-age=0, must-revalidate' || echo 'index.html upload skipped'"
+                // CloudFront invalidation — only if CloudFront distribution exists
+                script {
+                    if (env.CLOUDFRONT_ID && env.CLOUDFRONT_ID != '') {
+                        sh "aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_ID} --paths '/*' || echo 'CloudFront invalidation skipped'"
+                    } else {
+                        echo '⚠️ CloudFront ID not configured — skipping cache invalidation (using S3 direct access)'
+                    }
+                }
                 echo '✅ Stage 10 Complete: Frontend deployed to AWS S3!'
             }
         }

@@ -14,5 +14,5 @@ data:
   NODE_ENV: "production"
   PORT: "3000"
   OTP_EXPIRY_SECONDS: "300"
-  CLIENT_URL: "https://metro-booking-service.vercel.app"
-  FRONTEND_URL: "https://metro-booking-service.vercel.app"
+  CLIENT_URL: "http://metrogo-frontend-866409326671.s3-website.eu-north-1.amazonaws.com"
+  FRONTEND_URL: "http://metrogo-frontend-866409326671.s3-website.eu-north-1.amazonaws.com"
