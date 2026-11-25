@@ -1,0 +1,75 @@
+[
+  {
+    "AlarmName": "MetroGo-High-Error-Rate-5xx",
+    "AlarmDescription": "Triggers when backend HTTP 5xx server errors exceed 5 occurrences within a 5-minute window, indicating server failures",
+    "ActionsEnabled": true,
+    "AlarmActions": [
+      "arn:aws:sns:eu-north-1:866409326671:metrogo-alarm-notifications"
+    ],
+    "MetricName": "HTTPCode_Target_5XX_Count",
+    "Namespace": "AWS/ApplicationELB",
+    "Statistic": "Sum",
+    "Dimensions": [
+      {
+        "Name": "LoadBalancer",
+        "Value": "app/metrogo-alb/50dc6c495c0c9188"
+      }
+    ],
+    "Period": 300,
+    "EvaluationPeriods": 2,
+    "DatapointsToAlarm": 2,
+    "Threshold": 5.0,
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "TreatMissingData": "notBreaching"
+  },
+  {
+    "AlarmName": "MetroGo-High-API-Latency-p99",
+    "AlarmDescription": "Triggers when backend p99 response latency exceeds 1.0 second (1000ms) for two consecutive 5-minute evaluation periods",
+    "ActionsEnabled": true,
+    "AlarmActions": [
+      "arn:aws:sns:eu-north-1:866409326671:metrogo-alarm-notifications"
+    ],
+    "MetricName": "TargetResponseTime",
+    "Namespace": "AWS/ApplicationELB",
+    "ExtendedStatistic": "p99",
+    "Dimensions": [
+      {
+        "Name": "LoadBalancer",
+        "Value": "app/metrogo-alb/50dc6c495c0c9188"
+      }
+    ],
+    "Period": 300,
+    "EvaluationPeriods": 2,
+    "DatapointsToAlarm": 2,
+    "Threshold": 1.0,
+    "ComparisonOperator": "GreaterThanThreshold",
+    "TreatMissingData": "notBreaching"
+  },
+  {
+    "AlarmName": "MetroGo-Low-Healthy-Host-Count",
+    "AlarmDescription": "Triggers when healthy backend target hosts drop below 2 instances for two consecutive 1-minute evaluation periods",
+    "ActionsEnabled": true,
+    "AlarmActions": [
+      "arn:aws:sns:eu-north-1:866409326671:metrogo-alarm-notifications"
+    ],
+    "MetricName": "HealthyHostCount",
+    "Namespace": "AWS/ApplicationELB",
+    "Statistic": "Average",
+    "Dimensions": [
+      {
+        "Name": "LoadBalancer",
+        "Value": "app/metrogo-alb/50dc6c495c0c9188"
+      },
+      {
+        "Name": "TargetGroup",
+        "Value": "targetgroup/metrogo-backend-tg/50dc6c495c0c9188"
+      }
+    ],
+    "Period": 60,
+    "EvaluationPeriods": 2,
+    "DatapointsToAlarm": 2,
+    "Threshold": 2.0,
+    "ComparisonOperator": "LessThanThreshold",
+    "TreatMissingData": "breaching"
+  }
+]

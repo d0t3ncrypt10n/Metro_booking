@@ -1,115 +1,209 @@
-# ============================================
-# MetroGo — Docker Compose (Local Development)
-# ============================================
-# Usage:
-#   docker compose up -d          Start all services
-#   docker compose down           Stop all services
-#   docker compose logs -f        Follow logs
-#   docker compose ps             Check status
+# ==============================================================================
+# MetroGo — Docker Compose Multi-Container Orchestration Specification
+# ==============================================================================
+# Project: MetroGo – Metro Booking & Network Management System
+# Context: 4th-Year B.Tech CSE Final Year Project (DevOps Pipeline)
+# Architecture: 12-Factor App Microservices Pattern (Containerized Backend + DB)
+#
+# Services Included:
+#   1. 'mongo'   : MongoDB NoSQL Database (stores tickets, stations, fares, and user preferences)
+#   2. 'backend' : Node.js & Express REST API (Twilio OTP authentication, Dijkstra routing, JWT)
+#
+# Key Architectural Change from Initial Synopsis:
+#   * REMOVED: Prometheus (metrics collector) and Grafana (dashboard UI) containers.
+#   * REASON: Monitoring has been migrated to native AWS CloudWatch (CloudWatch Logs,
+#     CloudWatch Metrics, CloudWatch Alarms, and CloudWatch Dashboards) for the production
+#     AWS deployment (EKS/EC2), removing local container overhead and aligning with cloud-native DevOps.
+#
+# Common Docker Compose Commands for Evaluator Demo:
+#   docker compose up -d          # Build and start all containers in detached (background) mode
+#   docker compose ps             # List running containers and view healthcheck status (healthy/unhealthy)
+#   docker compose logs -f        # Stream live console logs from all containers
+#   docker compose logs backend   # View output logs specifically from the Express backend API
+#   docker compose down           # Stop and remove all containers and virtual networks
+#   docker compose down -v        # Stop containers AND delete persistent database volumes (clean reset)
+# ==============================================================================
 
+# Specifies the Docker Compose file format specification version
+# Simple explanation: Version 3.9 supports advanced health checks, network configurations, and depends_on conditions
 version: "3.9"
 
+# Top-level 'services' block defines the individual application containers to create and manage
 services:
-  # ─── MongoDB ───────────────────────────────
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 1: MongoDB Database
+  # ----------------------------------------------------------------------------
+  # Simple explanation: Runs the official MongoDB database container where MetroGo
+  # stores station nodes, metro line routes, passenger ticket bookings, and preferences.
+  # ----------------------------------------------------------------------------
   mongo:
+    # Specifies the official MongoDB image from Docker Hub to pull and run
+    # Simple explanation: This uses MongoDB Community Edition version 7.0 LTS
     image: mongo:7
+
+    # Assigns a custom, human-readable name to the container instead of an arbitrary random hash
+    # Simple explanation: This names the container 'metrogo-mongo' for easy CLI identification
     container_name: metrogo-mongo
+
+    # Defines the automated restart policy if the container crashes or the host reboots
+    # Simple explanation: Automatically restarts MongoDB unless the developer explicitly stopped it
     restart: unless-stopped
+
+    # Maps network ports between the developer's computer (host) and the container: [HOST_PORT:CONTAINER_PORT]
     ports:
+      # Simple explanation: Maps host port 27017 to container port 27017 so GUI tools like MongoDB Compass can connect
       - "27017:27017"
+
+    # Injects environment variables into the MongoDB container during initial database creation
     environment:
+      # Simple explanation: Automatically creates a database named 'metrogo' when container boots up
       MONGO_INITDB_DATABASE: metrogo
+
+    # Mounts persistent data storage so database records survive container restarts or teardowns
     volumes:
+      # Simple explanation: Stores MongoDB data files in the persistent Docker-managed volume 'mongo_data'
       - mongo_data:/data/db
+
+    # Attaches this container to our custom virtual network
     networks:
+      # Simple explanation: Connects MongoDB to 'metrogo-network' so the backend service can access it
       - metrogo-network
+
+    # Health check probe to ensure MongoDB is fully initialized and accepting database queries
     healthcheck:
+      # Simple explanation: Executes 'mongosh ping' inside MongoDB to test if database engine is alive
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      # Simple explanation: Runs the health check every 10 seconds
       interval: 10s
+      # Simple explanation: Marks an individual check as failed if no response within 5 seconds
       timeout: 5s
+      # Simple explanation: Marks container as 'unhealthy' only after 5 consecutive failed attempts
       retries: 5
+      # Simple explanation: Grants a 5-second startup grace period before health checks start counting
+      start_period: 5s
 
-  # ─── Backend API ───────────────────────────
+
+  # ----------------------------------------------------------------------------
+  # SERVICE 2: MetroGo Backend REST API
+  # ----------------------------------------------------------------------------
+  # Simple explanation: Runs our Express.js REST API application which handles
+  # Dijkstra shortest-route calculation, Twilio SMS OTP verification, and JWT auth.
+  # ----------------------------------------------------------------------------
   backend:
+    # ─── Docker Hub Image Reference (Evaluator Concept: Docker Registries - Unit I) ───
+    # In a production CI/CD pipeline (Jenkins Stage 6), this backend container image is
+    # built from our Dockerfile, scanned for CVEs using Trivy, and pushed to Docker Hub and AWS ECR:
+    #
+    #   Docker Hub Repository: docker.io/<your-dockerhub-username>/metrogo-backend:1.0.0
+    #   Docker Hub Latest Tag: docker.io/<your-dockerhub-username>/metrogo-backend:latest
+    #   AWS ECR Repository:    <aws_account_id>.dkr.ecr.<region>.amazonaws.com/metrogo-backend:latest
+    #
+    # For local development, we build directly from local source files using 'build:' below.
+    # To run a pre-built image pulled directly from Docker Hub instead, uncomment the image line:
+    # image: your-dockerhub-username/metrogo-backend:1.0.0
+    # ──────────────────────────────────────────────────────────────────────────────────
+
+    # Directs Docker Compose to build a custom Docker image from local source code
     build:
+      # Simple explanation: Sets the build directory context to './server' where backend code lives
       context: ./server
+      # Simple explanation: Specifies the Dockerfile name to use (our multi-stage production Dockerfile)
       dockerfile: Dockerfile
+
+    # Assigns a custom, human-readable name to the running backend container
+    # Simple explanation: This names the container 'metrogo-backend' so you can check logs easily
     container_name: metrogo-backend
+
+    # Automatically restarts the API if an unexpected server exception or crash occurs
+    # Simple explanation: Keeps the backend server running continuously unless stopped manually
     restart: unless-stopped
+
+    # Port forwarding configuration between host machine and the container: [HOST_PORT:CONTAINER_PORT]
     ports:
+      # Simple explanation: Forwards localhost port 3000 to container port 3000 for React frontend and Postman
       - "3000:3000"
+
+    # Injects runtime environment variables (12-Factor App methodology: Config in Environment)
     environment:
+      # Simple explanation: Sets Node.js environment to development for helpful debugging logs locally
       - NODE_ENV=development
+      # Simple explanation: Sets the internal network port Express listens on to 3000
       - PORT=3000
+      # Simple explanation: Connection string using Docker's internal DNS hostname 'mongo' to reach the database
       - MONGODB_URI=mongodb://mongo:27017/metrogo
+      # Simple explanation: Secret key used to sign and verify JWT authentication tokens (with fallback default)
       - JWT_SECRET=${JWT_SECRET:-metro_booking_jwt_secret_key_2026}
+      # Simple explanation: Twilio Account SID identifier used to authenticate Twilio SMS/Voice API requests
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-your_twilio_sid}
+      # Simple explanation: Twilio Auth Token secret credential used for Twilio SMS API requests
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-your_twilio_token}
+      # Simple explanation: Twilio virtual phone number that sends the OTP text messages to passengers
       - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-+1234567890}
+      # Simple explanation: Lifetime in seconds (300 seconds = 5 minutes) before an OTP code expires
       - OTP_EXPIRY_SECONDS=300
+
+    # Controls startup sequencing and guarantees service dependencies are ready
     depends_on:
+      # Simple explanation: Explicitly declares that the backend depends on the 'mongo' service
       mongo:
+        # EVALUATOR CONCEPT (Health-Based Dependency):
+        # By default, depends_on only waits for the MongoDB container to spawn, NOT for the DB to be ready.
+        # Setting 'condition: service_healthy' forces Docker Compose to wait until MongoDB's healthcheck
+        # passes ('mongosh ping' returns OK) before launching the backend, preventing connection errors!
         condition: service_healthy
+
+    # Attaches the backend container to our custom virtual network
     networks:
+      # Simple explanation: Connects backend to 'metrogo-network' to allow direct communication with MongoDB
       - metrogo-network
+
+    # Health check probe to verify the Express API is running and answering HTTP web requests
     healthcheck:
+      # Simple explanation: Uses 'wget' to ping the Express '/health' endpoint to verify HTTP 200 OK status
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      # Simple explanation: Repeats the health test every 15 seconds
       interval: 15s
+      # Simple explanation: Allows up to 5 seconds for the HTTP response before failing
       timeout: 5s
+      # Simple explanation: Flags the container as unhealthy after 3 consecutive failed checks
       retries: 3
+      # Simple explanation: Gives Node.js 10 seconds of startup grace period to connect to DB before testing
+      start_period: 10s
 
-  # ─── Prometheus ────────────────────────────
-  prometheus:
-    image: prom/prometheus:v2.51.0
-    container_name: metrogo-prometheus
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=15d"
-      - "--web.console.libraries=/etc/prometheus/console_libraries"
-      - "--web.console.templates=/etc/prometheus/consoles"
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - metrogo-network
 
-  # ─── Grafana ───────────────────────────────
-  grafana:
-    image: grafana/grafana:10.4.0
-    container_name: metrogo-grafana
-    restart: unless-stopped
-    ports:
-      - "3001:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=metrogo2026
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
-    networks:
-      - metrogo-network
+# ==============================================================================
+# MONITORING INFRASTRUCTURE NOTE (AWS CloudWatch Migration)
+# ==============================================================================
+# In earlier development phases, Prometheus and Grafana were included in this compose file.
+# In accordance with the updated MetroGo project synopsis (Units IV & V):
+#   - Prometheus and Grafana containers were REMOVED from the local stack.
+#   - Monitoring is now handled natively by AWS CloudWatch in the cloud architecture:
+#       1. AWS CloudWatch Logs: Aggregates backend stdout/stderr server logs in real time.
+#       2. AWS CloudWatch Metrics: Collects compute, memory, and custom application metrics.
+#       3. AWS CloudWatch Alarms: Notifies engineers automatically on high error rates or latency.
+#       4. AWS CloudWatch Dashboards: Provides centralized DevOps monitoring on AWS.
+# ==============================================================================
 
-# ─── Volumes ───────────────────────────────
+
+# ------------------------------------------------------------------------------
+# Persistent Storage Volumes Block
+# ------------------------------------------------------------------------------
+# Top-level 'volumes' section defines storage volumes managed by Docker on the host system
 volumes:
+  # Simple explanation: Named persistent volume that holds all MongoDB collections and data files
   mongo_data:
-    driver: local
-  prometheus_data:
-    driver: local
-  grafana_data:
+    # Simple explanation: Uses Docker's standard local filesystem driver on the host computer
     driver: local
 
-# ─── Networks ──────────────────────────────
+
+# ------------------------------------------------------------------------------
+# Virtual Networks Block
+# ------------------------------------------------------------------------------
+# Top-level 'networks' section defines custom software networks connecting our containers
 networks:
+  # Simple explanation: Dedicated bridge network created for MetroGo microservices
   metrogo-network:
+    # Simple explanation: 'bridge' driver creates an isolated private virtual network on the host
+    # Allows containers to discover each other via service name ('mongo', 'backend') via Docker DNS
     driver: bridge

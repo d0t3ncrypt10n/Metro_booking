@@ -1,0 +1,126 @@
+# ==============================================================================
+# Role-Based Access Control (RBAC) & IRSA — MetroGo Backend Service
+# ==============================================================================
+# This manifest follows the Principle of Least Privilege:
+# 1. Dedicated ServiceAccount for the backend microservice pod.
+# 2. IAM Roles for Service Accounts (IRSA) annotation for AWS integration.
+# 3. Scoped Role granting minimal read-only permissions (get, list) in metrogo namespace.
+# 4. RoleBinding binding the ServiceAccount to the scoped Role.
+# ==============================================================================
+
+# Core Kubernetes API version for ServiceAccount resources
+apiVersion: v1
+
+# ServiceAccount provides a secure, distinct identity for backend pods
+kind: ServiceAccount
+
+# Metadata identifying the ServiceAccount and AWS IAM Role annotations
+metadata:
+  # Name of the ServiceAccount used by backend pods
+  name: metrogo-backend-sa
+  # Namespace where this ServiceAccount is registered
+  namespace: metrogo
+  # Standard organizational labels
+  labels:
+    # Identifies the application name
+    app: metrogo
+    # Identifies the architectural component tier
+    component: backend
+  # Annotations used by AWS EKS and IAM controllers for identity federation
+  annotations:
+    # IRSA annotation mapping this Kubernetes ServiceAccount to an AWS IAM Role (placeholder ARN)
+    iam.amazonaws.com/role: "arn:aws:iam::123456789012:role/metrogo-backend-irsa-role"
+    # Modern AWS EKS standard annotation for IAM Roles for Service Accounts (placeholder ARN)
+    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/metrogo-backend-irsa-role"
+
+---
+# ==============================================================================
+# RBAC Role — Scoped Minimal Permissions for MetroGo Backend
+# ==============================================================================
+# Defines strictly read-only access (get, list) to pods, configmaps, and secrets
+# only within the "metrogo" namespace, preventing cluster-wide privilege abuse.
+# ==============================================================================
+
+# RBAC authorization API version
+apiVersion: rbac.authorization.k8s.io/v1
+
+# Role kind defines permissions within a single specific namespace (unlike ClusterRole)
+kind: Role
+
+# Metadata specifying Role name and namespace scope
+metadata:
+  # Name identifying this RBAC Role
+  name: metrogo-backend-role
+  # Namespace to which these permissions are strictly confined
+  namespace: metrogo
+  # Standard organizational labels
+  labels:
+    # Identifies the application name
+    app: metrogo
+    # Identifies the architectural component tier
+    component: backend
+
+# List of permission rules granted by this Role
+rules:
+  # Core API group ("" denotes the core Kubernetes API group)
+  - apiGroups:
+      # Empty string "" targets core resources like pods, configmaps, and secrets
+      - ""
+    # Kubernetes resources that the backend is authorized to access
+    resources:
+      # Allows access to pod metadata (useful for health discovery)
+      - pods
+      # Allows reading runtime configuration objects
+      - configmaps
+      # Allows reading application secrets and credentials
+      - secrets
+    # HTTP operations/verbs permitted on the specified resources (strictly read-only)
+    verbs:
+      # "get" allows fetching a single specific object by its name
+      - get
+      # "list" allows listing objects within the namespace
+      - list
+
+---
+# ==============================================================================
+# RoleBinding — Attach ServiceAccount to the Scoped Role
+# ==============================================================================
+# Links the metrogo-backend-sa ServiceAccount to metrogo-backend-role in metrogo namespace.
+# ==============================================================================
+
+# RBAC authorization API version
+apiVersion: rbac.authorization.k8s.io/v1
+
+# RoleBinding grants the permissions defined in a Role to a user or ServiceAccount
+kind: RoleBinding
+
+# Metadata specifying RoleBinding name and namespace
+metadata:
+  # Name of this RoleBinding resource
+  name: metrogo-backend-rolebinding
+  # Namespace where this binding is applied
+  namespace: metrogo
+  # Standard organizational labels
+  labels:
+    # Identifies the application name
+    app: metrogo
+    # Identifies the architectural component tier
+    component: backend
+
+# Reference to the Role containing the permissions being granted
+roleRef:
+  # The kind of target role (Role means namespace-scoped)
+  kind: Role
+  # Name of the target Role defined above
+  name: metrogo-backend-role
+  # The API group responsible for RBAC authorization
+  apiGroup: rbac.authorization.k8s.io
+
+# List of subjects (identities) receiving the Role's permissions
+subjects:
+  # Subject type: ServiceAccount used by backend pods
+  - kind: ServiceAccount
+    # Name of the ServiceAccount to grant permissions to
+    name: metrogo-backend-sa
+    # Namespace of the ServiceAccount
+    namespace: metrogo

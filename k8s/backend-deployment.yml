@@ -31,11 +31,27 @@ spec:
         prometheus.io/port: "3000"
         prometheus.io/path: "/metrics"
     spec:
+      # Attach dedicated ServiceAccount with minimal RBAC permissions and AWS IRSA support
+      serviceAccountName: metrogo-backend-sa
+      # Pod-level security context enforcing least privilege across all containers in the pod
+      securityContext:
+        # Enforce that containers cannot run as the root user (UID 0) for security hardening
+        runAsNonRoot: true
+        # Group ID 1001 assigned to all volume mounts and file operations in the pod
+        fsGroup: 1001
       containers:
         - name: metrogo-backend
           # Replace with your ECR image URI after pushing
-          image: 482531072638.dkr.ecr.eu-north-1.amazonaws.com/metrogo-backend:latest
+          image: 866409326671.dkr.ecr.eu-north-1.amazonaws.com/metrogo-backend:latest
           imagePullPolicy: Always
+          # Container-level security context enforcing runtime privilege restrictions
+          securityContext:
+            # Prevent process from gaining additional privileges via setuid/setgid binaries
+            allowPrivilegeEscalation: false
+            # Mount the root container filesystem as read-only to prevent unauthorized file writes
+            readOnlyRootFilesystem: true
+            # Explicitly run the container process with non-root UID 1001 (matches Dockerfile user)
+            runAsUser: 1001
           ports:
             - containerPort: 3000
               protocol: TCP

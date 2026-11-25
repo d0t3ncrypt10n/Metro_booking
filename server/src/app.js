@@ -16,7 +16,7 @@ promClient.collectDefaultMetrics({
   labels: { app: 'metrogo' },
 });
 
-// Custom metrics
+
 const httpRequestDuration = new promClient.Histogram({
   name: 'http_request_duration_seconds',
   help: 'Duration of HTTP requests in seconds',

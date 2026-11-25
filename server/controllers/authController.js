@@ -17,7 +17,6 @@ export async function sendOtpController(req, res, next) {
       });
     }
 
-    // Send OTP via Twilio
     const result = await sendOtpViaTwilio(phone, channel);
 
     if (!result.success) {

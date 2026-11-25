@@ -11,7 +11,7 @@ export function validatePhoneNumber(req, res, next) {
     });
   }
 
-  // Remove all non-digit characters
+  
   const cleaned = phone.replace(/\D/g, '');
 
   // Check if it's a valid length (10 digits for India, or 12 with country code)

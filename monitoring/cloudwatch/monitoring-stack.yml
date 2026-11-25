@@ -1,0 +1,179 @@
+# ==============================================================================
+# MetroGo — AWS CloudFormation Monitoring Stack
+# 4th-Year B.Tech CSE Final Year Capstone Project
+# ==============================================================================
+# This template provisions enterprise-grade monitoring resources on AWS:
+# 1. CloudWatch Log Group for container & application logging (/aws/eks/metrogo/backend)
+# 2. SNS Topic for publishing real-time alerting notifications to DevOps team
+# 3. CloudWatch Metric Alarms (5xx Error Rate, p99 Latency, Healthy Host Count)
+# ==============================================================================
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'MetroGo - CloudFormation Monitoring Stack for CloudWatch Logs, Alarms, and SNS Notifications'
+
+# ─── Stack Input Parameters ──────────────────────────────────────────────────
+Parameters:
+  ProjectName:
+    Type: String
+    Default: metrogo
+    Description: Name of the project used for resource naming and tagging
+
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+    Description: Deployment target environment
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 180, 365]
+    Description: Number of days to retain application log events in CloudWatch Logs
+
+  ErrorRateThreshold:
+    Type: Number
+    Default: 5
+    Description: 5xx server error count threshold within a 5-minute window
+
+  LatencyThresholdSeconds:
+    Type: Number
+    Default: 1.0
+    Description: p99 latency threshold in seconds before raising an alarm
+
+  HealthyHostThreshold:
+    Type: Number
+    Default: 2
+    Description: Minimum healthy pod/host count below which an alarm is raised
+
+# ─── Stack Resources ─────────────────────────────────────────────────────────
+Resources:
+
+  # 1. CloudWatch Log Group for MetroGo Backend API
+  MetroGoBackendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      # Specific log group name adhering to AWS EKS and container insights standard
+      LogGroupName: /aws/eks/metrogo/backend
+      # Automatic log expiration to control AWS CloudWatch storage costs
+      RetentionInDays: !Ref LogRetentionInDays
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: CloudFormation
+
+  # 2. Amazon Simple Notification Service (SNS) Topic for Alerting
+  MetroGoAlertsSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: metrogo-alarm-notifications
+      DisplayName: MetroGo CloudWatch Monitoring Alerts
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # 3. CloudWatch Metric Alarm: High Error Rate (5xx)
+  HighErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MetroGo-High-Error-Rate-5xx
+      AlarmDescription: Triggers when backend HTTP 5xx server errors exceed 5 in a 5-minute window
+      ActionsEnabled: true
+      # Send alarm trigger notification to SNS topic
+      AlarmActions:
+        - !Ref MetroGoAlertsSNSTopic
+      OKActions:
+        - !Ref MetroGoAlertsSNSTopic
+      MetricName: HTTPCode_Target_5XX_Count
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: !Ref ErrorRateThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Severity
+          Value: Critical
+
+  # 4. CloudWatch Metric Alarm: High API Latency (p99)
+  HighApiLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MetroGo-High-API-Latency-p99
+      AlarmDescription: Triggers when backend p99 response latency exceeds 1.0 second (1000ms)
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref MetroGoAlertsSNSTopic
+      OKActions:
+        - !Ref MetroGoAlertsSNSTopic
+      MetricName: TargetResponseTime
+      Namespace: AWS/ApplicationELB
+      ExtendedStatistic: p99
+      Period: 300
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: !Ref LatencyThresholdSeconds
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Severity
+          Value: Warning
+
+  # 5. CloudWatch Metric Alarm: Low Healthy Host Count
+  LowHealthyHostCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MetroGo-Low-Healthy-Host-Count
+      AlarmDescription: Triggers when healthy backend target hosts drop below 2 instances
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref MetroGoAlertsSNSTopic
+      OKActions:
+        - !Ref MetroGoAlertsSNSTopic
+      MetricName: HealthyHostCount
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: !Ref HealthyHostThreshold
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Severity
+          Value: Critical
+
+# ─── Stack Outputs ───────────────────────────────────────────────────────────
+Outputs:
+  LogGroupName:
+    Description: Name of the provisioned CloudWatch Log Group
+    Value: !Ref MetroGoBackendLogGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-LogGroupName"
+
+  LogGroupArn:
+    Description: ARN of the provisioned CloudWatch Log Group
+    Value: !GetAtt MetroGoBackendLogGroup.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-LogGroupArn"
+
+  AlertsTopicArn:
+    Description: ARN of the SNS Topic used for alarm notifications
+    Value: !Ref MetroGoAlertsSNSTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-AlertsTopicArn"

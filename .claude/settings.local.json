@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker build *)",
+      "Bash(terraform init *)",
+      "Bash(terraform validate *)",
+      "Bash(npm install *)",
+      "Bash(timeout 5 node src/app.js)",
+      "Bash(PORT=3099 timeout 3 node src/app.js)",
+      "Bash(curl -s http://localhost:3099/health)",
+      "Bash(curl -s http://localhost:3099/metrics)",
+      "Bash(python3 -c 'import yaml; yaml.safe_load\\(open\\('\\\\''__TRACKED_VAR__'\\\\''\\)\\)')",
+      "Bash(python3 -c \"import json; json.load\\(open\\('/home/nexus/Documents/Metro_booking/monitoring/grafana/dashboards/metrogo-dashboard.json'\\)\\)\")",
+      "Bash(python3 -c ' *)",
+      "Bash(terraform plan *)",
+      "Bash(aws eks *)",
+      "Bash(aws s3api *)",
+      "Bash(aws ecr *)"
+    ]
+  }
+}

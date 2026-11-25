@@ -39,7 +39,7 @@ spec:
               memory: "512Mi"
               cpu: "500m"
           volumeMounts:
-            - name: mongo-persistent-storage
+            - name: mongo-storage
               mountPath: /data/db
           livenessProbe:
             exec:
@@ -59,11 +59,6 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
-  volumeClaimTemplates:
-    - metadata:
-        name: mongo-persistent-storage
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 5Gi
+      volumes:
+        - name: mongo-storage
+          emptyDir: {}
