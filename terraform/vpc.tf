@@ -1,8 +1,3 @@
-# ============================================
-# VPC — MetroGo Network Infrastructure
-# ============================================
-
-# ─── VPC ─────────────────────────────────────
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
@@ -13,7 +8,6 @@ resource "aws_vpc" "main" {
   }
 }
 
-# ─── Internet Gateway ───────────────────────
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -22,7 +16,6 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# ─── Public Subnets ──────────────────────────
 resource "aws_subnet" "public" {
   count = length(var.public_subnet_cidrs)
 
@@ -32,13 +25,10 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                                          = "${var.project_name}-public-${count.index + 1}"
-    "kubernetes.io/role/elb"                      = "1"
-    "kubernetes.io/cluster/${var.project_name}-eks" = "shared"
+    Name = "${var.project_name}-public-${count.index + 1}"
   }
 }
 
-# ─── Private Subnets ─────────────────────────
 resource "aws_subnet" "private" {
   count = length(var.private_subnet_cidrs)
 
@@ -47,13 +37,10 @@ resource "aws_subnet" "private" {
   availability_zone = var.availability_zones[count.index]
 
   tags = {
-    Name                                          = "${var.project_name}-private-${count.index + 1}"
-    "kubernetes.io/role/internal-elb"              = "1"
-    "kubernetes.io/cluster/${var.project_name}-eks" = "shared"
+    Name = "${var.project_name}-private-${count.index + 1}"
   }
 }
 
-# ─── Elastic IP for NAT Gateway ──────────────
 resource "aws_eip" "nat" {
   domain = "vpc"
 
@@ -62,7 +49,6 @@ resource "aws_eip" "nat" {
   }
 }
 
-# ─── NAT Gateway (Public Subnet) ─────────────
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public[0].id
@@ -74,7 +60,6 @@ resource "aws_nat_gateway" "main" {
   depends_on = [aws_internet_gateway.main]
 }
 
-# ─── Public Route Table ──────────────────────
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -95,7 +80,6 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# ─── Private Route Table ─────────────────────
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 

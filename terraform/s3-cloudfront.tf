@@ -1,11 +1,3 @@
-# ============================================
-# S3 + Direct Website — MetroGo Frontend
-# ============================================
-# Note: CloudFront distribution skipped due to AWS account restrictions.
-# Frontend served directly via S3 Website URL instead.
-# ============================================
-
-# ─── S3 Bucket for Frontend Static Files ─────
 resource "aws_s3_bucket" "frontend" {
   bucket        = "${var.project_name}-frontend-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
@@ -15,7 +7,6 @@ resource "aws_s3_bucket" "frontend" {
   }
 }
 
-# S3 Bucket Website Configuration
 resource "aws_s3_bucket_website_configuration" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
@@ -28,8 +19,6 @@ resource "aws_s3_bucket_website_configuration" "frontend" {
   }
 }
 
-# Block public access settings — relaxed for direct website access
-# These are set to allow S3 website hosting without CloudFront
 resource "aws_s3_bucket_public_access_block" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
@@ -39,7 +28,6 @@ resource "aws_s3_bucket_public_access_block" "frontend" {
   restrict_public_buckets = false
 }
 
-# S3 Bucket Policy — Allow public read access for website hosting
 resource "aws_s3_bucket_policy" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 

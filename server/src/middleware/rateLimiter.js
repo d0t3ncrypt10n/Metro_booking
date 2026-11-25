@@ -1,4 +1,3 @@
-// Simple in-memory rate limiter — use express-rate-limit + Redis in production
 const requestCounts = new Map();
 
 function rateLimiter(maxRequests, windowMs) {
@@ -8,11 +7,9 @@ function rateLimiter(maxRequests, windowMs) {
     const windowStart = now - windowMs;
 
     const timestamps = (requestCounts.get(key) || []).filter(t => t > windowStart);
-    
+
     if (timestamps.length >= maxRequests) {
-      return res.status(429).json({
-        error: 'Too many requests. Please wait before trying again.',
-      });
+      return res.status(429).json({ error: 'Too many requests. Please wait.' });
     }
 
     timestamps.push(now);

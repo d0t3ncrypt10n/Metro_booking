@@ -1,11 +1,6 @@
-# ============================================
-# Kubernetes Namespace — MetroGo
-# ============================================
-
 apiVersion: v1
 kind: Namespace
 metadata:
   name: metrogo
   labels:
     app: metrogo
-    environment: production

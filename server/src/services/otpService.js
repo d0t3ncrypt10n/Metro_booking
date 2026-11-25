@@ -1,13 +1,10 @@
 const crypto = require('crypto');
 
-// In-memory store — swap this for Redis in production
 const otpStore = new Map();
-
 const OTP_EXPIRY_MS = (parseInt(process.env.OTP_EXPIRY_SECONDS) || 300) * 1000;
 const MAX_ATTEMPTS = 5;
 
 function generateOTP() {
-  // Cryptographically secure 6-digit OTP
   return crypto.randomInt(100000, 999999).toString();
 }
 
@@ -20,7 +17,7 @@ function storeOTP(phone, otp, name = null) {
     hash: hashOTP(otp),
     expiresAt: Date.now() + OTP_EXPIRY_MS,
     attempts: 0,
-    name: name, // Store name for signup flow
+    name: name,
   });
 }
 
@@ -44,22 +41,16 @@ function verifyOTP(phone, inputOtp) {
   record.attempts++;
 
   const inputHash = hashOTP(inputOtp);
-  const isValid = crypto.timingSafeEqual(
-    Buffer.from(record.hash, 'hex'),
-    Buffer.from(inputHash, 'hex')
-  );
+  const isValid = record.hash === inputHash;
 
   if (!isValid) {
-    return { 
-      success: false, 
-      reason: `Invalid OTP. ${MAX_ATTEMPTS - record.attempts} attempts remaining.` 
+    return {
+      success: false,
+      reason: `Invalid OTP. ${MAX_ATTEMPTS - record.attempts} attempts remaining.`,
     };
   }
 
-  // Return name if stored (for signup)
   const userName = record.name;
-  
-  // Invalidate immediately on success — prevent replay attacks
   otpStore.delete(phone);
   return { success: true, name: userName };
 }

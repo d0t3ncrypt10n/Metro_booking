@@ -1,7 +1,3 @@
-# ============================================
-# ConfigMap — MetroGo Backend (Non-Sensitive)
-# ============================================
-
 apiVersion: v1
 kind: ConfigMap
 metadata:
